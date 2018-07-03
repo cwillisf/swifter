@@ -127,6 +127,10 @@ public func websocket(
     }
 }
 
+public protocol WebSocketSessionDelegate: class {
+    func sessionWasClosed(_ session: WebSocketSession)
+}
+
 public class WebSocketSession: Hashable, Equatable  {
     
     public enum WsError: Error { case unknownOpCode(String), unMaskedFrame(String), protocolError(String), invalidUTF8(String) }
@@ -142,10 +146,15 @@ public class WebSocketSession: Hashable, Equatable  {
         public var payload = [UInt8]()
     }
 
+    public weak var delegate : WebSocketSessionDelegate?
+
     public let socket: Socket
-    
+
     public init(_ socket: Socket) {
         self.socket = socket
+        socket.onShutdown = { [weak self] in
+            self?.delegate?.sessionWasClosed(self!)
+        }
     }
     
     deinit {
