@@ -167,11 +167,10 @@ public class WebSocketSession: Hashable, Equatable  {
     
     public func writeFrame(_ data: ArraySlice<UInt8>, _ op: OpCode, _ fin: Bool = true) {
         let finAndOpCode = UInt8(fin ? 0x80 : 0x00) | op.rawValue
-        let maskAndLngth = encodeLengthAndMaskFlag(UInt64(data.count), false)
+        var frame = encodeHeader(finAndOpCode, UInt64(data.count), false)
+        frame.append(contentsOf: data)
         do {
-            try self.socket.writeUInt8([finAndOpCode])
-            try self.socket.writeUInt8(maskAndLngth)
-            try self.socket.writeUInt8(data)
+            try self.socket.writeUInt8(frame)
         } catch {
             print(error)
         }
@@ -181,9 +180,9 @@ public class WebSocketSession: Hashable, Equatable  {
         writeFrame(ArraySlice("".utf8), .close)
     }
     
-    private func encodeLengthAndMaskFlag(_ len: UInt64, _ masked: Bool) -> [UInt8] {
+    private func encodeHeader(_ finAndOpCode: UInt8, _ len: UInt64, _ masked: Bool) -> [UInt8] {
         let encodedLngth = UInt8(masked ? 0x80 : 0x00)
-        var encodedBytes = [UInt8]()
+        var encodedBytes: [UInt8] = [finAndOpCode]
         switch len {
         case 0...125:
             encodedBytes.append(encodedLngth | UInt8(len));
